@@ -1,0 +1,50 @@
+# Porter Example Configuration File
+# This file serves as a template for configuring the Porter transparent UDP relay.
+
+# UDP Relay settings
+udp:
+  # The port on which the UDP relay listener will run.
+  port: 443
+  # Set to true to log incoming UDP requests.
+  log_requests: false
+
+# Management API settings
+api:
+  # The port on which the Fiber-based HTTP management API will listen.
+  port: 8080
+  # Set to true to log incoming API requests using Fiber middleware.
+  log_requests: false
+
+# Redis synchronization settings
+redis:
+  # Set to true to enable Redis-based route persistence and Pub/Sub sync.
+  enabled: false
+  # Redis server address (host:port).
+  address: "localhost:6379"
+  # Redis password (optional).
+  password: ""
+  # Redis database index.
+  db: 0
+  # Redis Pub/Sub channel for real-time route synchronization across instances.
+  channel: "porter_routes"
+
+# Agones game server fleet integration settings
+agones:
+  # Set to true to enable Agones routing strategy.
+  enabled: false
+  # The address of the Agones Allocator service.
+  allocator_host: "agones-allocator.agones-system.svc.cluster.local"
+  # Paths to TLS certificates for authenticating with the Agones Allocator.
+  allocator_client_cert: "/etc/agones/certs/tls.crt"
+  allocator_client_key: "/etc/agones/certs/tls.key"
+  allocator_ca_cert: "/etc/agones/certs/ca.crt"
+
+# Initial routes to seed the Porter instance.
+# These routes are loaded on startup and are NOT persisted to Redis.
+routes:
+  - fqdn: "game1.example.com"
+    type: "simple"
+    target: "127.0.0.1:7777"
+  - fqdn: "matchmaker.example.com"
+    type: "agones"
+    target: "gs-fleet-us-east"
