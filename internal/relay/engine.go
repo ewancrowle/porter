@@ -207,6 +207,31 @@ func (r *Relay) handleBackendResponse(sess *session) {
 			return
 		}
 
+		// Response Snooping: Extract Server-Initiated IDs
+		curr := 0
+		for curr < n {
+			header, err := quic.ParsePacket(buf[curr:n])
+			if err != nil {
+				break // Stop parsing if we can't read headers, just forward the blob
+			}
+
+			// Snoop the Server's Source Connection ID
+			if header.IsLongHeader && len(header.SCID) > 0 {
+				serverSCID := string(header.SCID)
+				r.sessions.LoadOrStore(serverSCID, sess)
+
+				// Register the 8-byte prefix for Short Header matches
+				if len(serverSCID) > 8 {
+					r.sessions.LoadOrStore(serverSCID[:8], sess)
+				}
+			}
+
+			curr += header.FullLength
+			if !header.IsLongHeader {
+				break
+			}
+		}
+
 		sess.mu.RLock()
 		clientAddr := sess.srcAddr
 		sess.mu.RUnlock()
