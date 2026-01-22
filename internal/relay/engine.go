@@ -114,14 +114,10 @@ func (r *Relay) handlePacket(srcAddr *net.UDPAddr, data []byte, header *quic.Par
 			}
 			sess.srcAddr = srcAddr
 		}
-		targetAddr := sess.targetAddr
 		sess.lastSeen = time.Now()
 		backendConn := sess.backendConn
 		sess.mu.Unlock()
 
-		if r.cfg.UDP.LogRequests {
-			log.Printf("Relay: %s -> %s (session, DCID: %x)", srcStr, targetAddr, header.DCID)
-		}
 		r.forward(backendConn, data)
 		return
 	}

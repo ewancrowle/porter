@@ -20,11 +20,12 @@ type AgonesStrategy struct {
 	mu     sync.RWMutex
 	fleets map[string]string // FQDN -> Fleet Name
 
-	enabled bool
-	host    string
-	cert    string
-	key     string
-	ca      string
+	enabled   bool
+	namespace string
+	host      string
+	cert      string
+	key       string
+	ca        string
 
 	client pb.AllocationServiceClient
 	conn   *grpc.ClientConn
@@ -36,11 +37,12 @@ func NewAgonesStrategy() *AgonesStrategy {
 	}
 }
 
-func (s *AgonesStrategy) Setup(enabled bool, host, cert, key, ca string) error {
+func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key, ca string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
+	s.namespace = ns
 	s.host = host
 	s.cert = cert
 	s.key = key
@@ -89,7 +91,7 @@ func (s *AgonesStrategy) createRemoteClusterDialOption(clientCert, clientKey, ca
 		return nil, err
 	}
 
-	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12}
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12, InsecureSkipVerify: true}
 	if len(caCert) != 0 {
 		tlsConfig.RootCAs = x509.NewCertPool()
 		if !tlsConfig.RootCAs.AppendCertsFromPEM(caCert) {
@@ -134,7 +136,7 @@ func (s *AgonesStrategy) allocate(ctx context.Context, fleetName string) (string
 	}
 
 	request := &pb.AllocationRequest{
-		Namespace: "default", // Should this be configurable?
+		Namespace: s.namespace,
 		MultiClusterSetting: &pb.MultiClusterSetting{
 			Enabled: false,
 		},

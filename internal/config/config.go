@@ -22,6 +22,7 @@ type Config struct {
 	} `mapstructure:"redis"`
 	Agones struct {
 		Enabled             bool   `mapstructure:"enabled"`
+		Namespace           string `mapstructure:"namespace"`
 		AllocatorHost       string `mapstructure:"allocator_host"`
 		AllocatorClientCert string `mapstructure:"allocator_client_cert"`
 		AllocatorClientKey  string `mapstructure:"allocator_client_key"`
@@ -47,6 +48,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("redis.enabled", false)
 	viper.SetDefault("redis.channel", "porter_routes")
 	viper.SetDefault("agones.enabled", false)
+	viper.SetDefault("agones.namespace", "default")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
