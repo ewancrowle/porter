@@ -23,10 +23,11 @@ type Relay struct {
 }
 
 type session struct {
-	targetAddr *net.UDPAddr
-	lastSeen   time.Time
-	mu         sync.RWMutex
-	srcAddr    *net.UDPAddr
+	targetAddr  *net.UDPAddr
+	lastSeen    time.Time
+	mu          sync.RWMutex
+	srcAddr     *net.UDPAddr
+	backendConn *net.UDPConn
 }
 
 func NewRelay(cfg *config.Config, manager *strategy.StrategyManager) (*Relay, error) {
@@ -115,12 +116,13 @@ func (r *Relay) handlePacket(srcAddr *net.UDPAddr, data []byte, header *quic.Par
 		}
 		targetAddr := sess.targetAddr
 		sess.lastSeen = time.Now()
+		backendConn := sess.backendConn
 		sess.mu.Unlock()
 
 		if r.cfg.UDP.LogRequests {
 			log.Printf("Relay: %s -> %s (session, DCID: %x)", srcStr, targetAddr, header.DCID)
 		}
-		r.forward(targetAddr, data)
+		r.forward(backendConn, data)
 		return
 	}
 
@@ -160,14 +162,23 @@ func (r *Relay) handlePacket(srcAddr *net.UDPAddr, data []byte, header *quic.Par
 		log.Printf("New session: %s -> %s (SNI: %s, DCID: %x)", srcStr, target, sni, header.DCID)
 	}
 
+	backendConn, err := net.DialUDP("udp", nil, targetAddr)
+	if err != nil {
+		log.Printf("Error dialing backend %s: %v", target, err)
+		return
+	}
+
 	newSess := &session{
-		targetAddr: targetAddr,
-		lastSeen:   time.Now(),
-		srcAddr:    srcAddr,
+		targetAddr:  targetAddr,
+		lastSeen:    time.Now(),
+		srcAddr:     srcAddr,
+		backendConn: backendConn,
 	}
 	r.sessions.Store(dcid, newSess)
 
-	r.forward(targetAddr, data)
+	go r.handleBackendResponse(newSess)
+
+	r.forward(backendConn, data)
 }
 
 func (r *Relay) resolveTarget(sni string) (string, error) {
@@ -186,16 +197,31 @@ func (r *Relay) resolveTarget(sni string) (string, error) {
 	return "", fmt.Errorf("no route for SNI %s", sni)
 }
 
-func (r *Relay) forward(targetAddr *net.UDPAddr, data []byte) {
-	outConn, err := net.DialUDP("udp", nil, targetAddr)
-	if err != nil {
-		log.Printf("Error dialing target %v: %v", targetAddr, err)
-		return
-	}
-	defer outConn.Close()
+func (r *Relay) handleBackendResponse(sess *session) {
+	defer sess.backendConn.Close()
+	buf := make([]byte, 2048)
+	for {
+		n, err := sess.backendConn.Read(buf)
+		if err != nil {
+			// This will also be triggered when the connection is closed.
+			return
+		}
 
-	_, err = outConn.Write(data)
+		sess.mu.RLock()
+		clientAddr := sess.srcAddr
+		sess.mu.RUnlock()
+
+		_, err = r.conn.WriteToUDP(buf[:n], clientAddr)
+		if err != nil {
+			log.Printf("Error writing back to client %v: %v", clientAddr, err)
+			return
+		}
+	}
+}
+
+func (r *Relay) forward(conn *net.UDPConn, data []byte) {
+	_, err := conn.Write(data)
 	if err != nil {
-		log.Printf("Error writing to target %v: %v", targetAddr, err)
+		log.Printf("Error writing to backend: %v", err)
 	}
 }
