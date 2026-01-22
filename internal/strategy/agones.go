@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 
@@ -146,11 +147,16 @@ func (s *AgonesStrategy) allocate(ctx context.Context, fleetName string) (string
 		},
 	}
 
+	log.Printf("Attempting Agones allocation for fleet: %s", fleetName)
 	resp, err := client.Allocate(ctx, request)
 	if err != nil {
+		log.Printf("Agones allocation failed for fleet %s: %v", fleetName, err)
 		return "", fmt.Errorf("agones allocation failed: %w", err)
 	}
 
+	target := fmt.Sprintf("%s:%d", resp.Address, resp.Ports[0].Port)
+	log.Printf("Agones allocation successful: %s -> %s", fleetName, target)
+
 	// Assuming we want to return "ip:port"
-	return fmt.Sprintf("%s:%d", resp.Address, resp.Ports[0].Port), nil
+	return target, nil
 }

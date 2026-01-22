@@ -48,6 +48,7 @@ func (s *RedisSync) LoadInitialRoutes(ctx context.Context) error {
 	}
 	for fqdn, target := range simpleRoutes {
 		s.simple.UpdateRoute(fqdn, target)
+		log.Printf("Loaded route from Redis: %s -> %s (simple)", fqdn, target)
 	}
 
 	// Load Agones routes from a Redis Hash "porter:routes:agones"
@@ -57,6 +58,7 @@ func (s *RedisSync) LoadInitialRoutes(ctx context.Context) error {
 	}
 	for fqdn, fleet := range agonesRoutes {
 		s.agones.UpdateRoute(fqdn, fleet)
+		log.Printf("Loaded route from Redis: %s -> %s (agones)", fqdn, fleet)
 	}
 
 	return nil
@@ -98,7 +100,7 @@ func (s *RedisSync) Subscribe(ctx context.Context) {
 			continue
 		}
 
-		log.Printf("Syncing route update: %s -> %s (%s)", route.FQDN, route.Target, route.Type)
+		log.Printf("Syncing route update from Redis: %s -> %s (%s)", route.FQDN, route.Target, route.Type)
 		if route.Type == strategy.StrategySimple {
 			s.simple.UpdateRoute(route.FQDN, route.Target)
 		} else if route.Type == strategy.StrategyAgones {

@@ -40,10 +40,10 @@ func main() {
 		switch strategy.StrategyType(r.Type) {
 		case strategy.StrategySimple:
 			simple.UpdateRoute(r.FQDN, r.Target)
-			log.Printf("Loaded initial simple route: %s -> %s", r.FQDN, r.Target)
+			log.Printf("Loaded route from config: %s -> %s (simple)", r.FQDN, r.Target)
 		case strategy.StrategyAgones:
 			agones.UpdateRoute(r.FQDN, r.Target)
-			log.Printf("Loaded initial agones route: %s -> %s", r.FQDN, r.Target)
+			log.Printf("Loaded route from config: %s -> %s (agones)", r.FQDN, r.Target)
 		default:
 			log.Printf("Warning: unknown strategy type %s for FQDN %s", r.Type, r.FQDN)
 		}
