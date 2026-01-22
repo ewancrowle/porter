@@ -137,9 +137,11 @@ func (s *AgonesStrategy) allocate(ctx context.Context, fleetName string) (string
 		MultiClusterSetting: &pb.MultiClusterSetting{
 			Enabled: false,
 		},
-		RequiredGameServerSelector: &pb.GameServerSelector{
-			MatchLabels: map[string]string{
-				"agones.dev/fleet": fleetName,
+		GameServerSelectors: []*pb.GameServerSelector{
+			{
+				MatchLabels: map[string]string{
+					"agones.dev/fleet": fleetName,
+				},
 			},
 		},
 	}

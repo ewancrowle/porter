@@ -88,10 +88,6 @@ func (s *Server) handleAgonesAllocation(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	// In a real scenario, this would trigger an allocation and return the FQDN to the client
-	// The client then connects to Porter using this FQDN.
-	// For this task, we return a success message or the placeholder target.
-
 	target, err := s.agones.Resolve(c.Context(), req.FQDN)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
