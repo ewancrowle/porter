@@ -15,6 +15,36 @@ Unlike traditional TCP proxies, routing UDP traffic while maintaining session st
 - Management API: RESTful API to update routing tables in real-time.
 - Horizontal Scalability: Optional Redis integration for route persistence and cross-instance synchronization via Pub/Sub.
 
+## How it works (for BungeeCord/Velocity users)
+
+If you're coming from the Minecraft world (BungeeCord, Waterfall, or Velocity), you can think of Porter as a Layer 4 "Proxy" for QUIC. 
+
+In BungeeCord, the proxy reads the Minecraft handshake to find the `serverAddress` (SNI equivalent) and forwards the TCP stream. Porter does something very similar but for UDP-based QUIC traffic:
+
+1. SNI Extraction: Just like Velocity reads the hostname from the handshake, Porter inspects the QUIC `Initial` packet to find the Server Name Indication (SNI).
+2. Dynamic Routing: Instead of a static `config.yml` with a fixed list of servers, Porter can use the Agones Strategy to "ask" Kubernetes for an available game server instance on the fly.
+3. Session Persistence: Unlike standard UDP load balancers that might send packets to the wrong server if a player's IP changes (e.g., switching from Wi-Fi to 5G), Porter tracks the Connection ID (DCID). This is like "sticky sessions" on steroids—even if the player's IP changes, they stay connected to the same backend.
+
+### Request Flow
+
+```mermaid
+graph TD
+    A[Client] -->|QUIC Initial + SNI| B(Porter)
+    B --> C{Strategy?}
+    
+    C -->|Simple| D[Static Mapping]
+    D -->|FQDN -> IP:Port| E[Backend Server]
+    
+    C -->|Agones| F[Agones Allocator]
+    F -->|Request GS from Fleet| G{Available GS?}
+    G -->|Yes| E
+    G -->|No| H[Connection Dropped]
+    
+    E -->|DCID Recorded| B
+    A -->|Subsequent Packets + DCID| B
+    B -->|Lookup DCID| E
+```
+
 ## Architecture
 
 1. QUIC Packet Parsing: Porter performs minimal decryption and parsing of QUIC Initial packets to find the TLS SNI.
