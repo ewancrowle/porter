@@ -25,26 +25,6 @@ In BungeeCord, the proxy reads the Minecraft handshake to find the `serverAddres
 2. Dynamic Routing: Instead of a static `config.yml` with a fixed list of servers, Porter can use the Agones Strategy to "ask" Kubernetes for an available game server instance on the fly.
 3. Session Persistence: Unlike standard UDP load balancers that might send packets to the wrong server if a player's IP changes (e.g., switching from Wi-Fi to 5G), Porter tracks the Connection ID (DCID). This is like "sticky sessions" on steroids—even if the player's IP changes, they stay connected to the same backend.
 
-### Request Flow
-
-```mermaid
-graph TD
-    A[Client] -->|QUIC Initial + SNI| B(Porter)
-    B --> C{Strategy?}
-    
-    C -->|Simple| D[Static Mapping]
-    D -->|FQDN -> IP:Port| E[Backend Server]
-    
-    C -->|Agones| F[Agones Allocator]
-    F -->|Request GS from Fleet| G{Available GS?}
-    G -->|Yes| E
-    G -->|No| H[Connection Dropped]
-    
-    E -->|DCID Recorded| B
-    A -->|Subsequent Packets + DCID| B
-    B -->|Lookup DCID| E
-```
-
 ## Architecture
 
 1. QUIC Packet Parsing: Porter performs minimal decryption and parsing of QUIC Initial packets to find the TLS SNI.
