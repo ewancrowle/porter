@@ -3,14 +3,16 @@ module github.com/ewancrowle/porter
 go 1.25.5
 
 require (
+	agones.dev/agones v1.55.0
 	github.com/gofiber/fiber/v2 v2.52.10
+	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.47.0
+	google.golang.org/grpc v1.78.0
 )
 
 require (
-	agones.dev/agones v1.55.0 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -23,7 +25,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
@@ -40,6 +41,5 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )

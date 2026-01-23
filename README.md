@@ -66,6 +66,43 @@ routes:
     target: "10.0.0.5:7777"
 ```
 
+## Agones Strategy
+
+The [Agones](https://agones.dev/) strategy allows Porter to dynamically discover and allocate game servers from Agones fleets. 
+
+When a request is received for an SNI mapped to an Agones fleet, Porter uses the Agones Allocation API to find an available game server.
+
+### Configuration
+
+To enable Agones support, configure the `agones` section in your `config.yaml`:
+
+```yaml
+agones:
+  enabled: true
+  namespace: "default"
+  allocator_host: "agones-allocator.agones-system.svc.cluster.local:443"
+  allocator_client_cert: "/path/to/tls.crt"
+  allocator_client_key: "/path/to/tls.key"
+  allocator_ca_cert: "/path/to/ca.crt"
+
+routes:
+  - fqdn: "game.example.com"
+    type: "agones"
+    target: "my-fleet-name" # The fleet name to allocate from
+```
+
+### Fleet Requirements
+
+To work with Porter's Agones strategy, your fleets must be configured with a `players` list. Porter specifically looks for servers with room for an additional player by including a `ListSelector` in the allocation request:
+
+```yaml
+lists:
+  players:
+    minAvailable: 1
+```
+
+This ensures that Porter routes players to servers that have capacity, rather than just any `READY` or `ALLOCATED` server.
+
 ## Management API
 
 Porter provides a Fiber-based API for dynamic route management.
