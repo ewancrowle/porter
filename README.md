@@ -74,7 +74,8 @@ routes:
     target: "10.0.0.5:7777"
 ```
 
-Note: By default, Porter listens on port 443. Hytale's default server port is 5520. You can either configure Porter to listen on 5520 or map the host port 5520 to Porter's 443 (e.g., -p 5520:443/udp or via a Kubernetes Service).
+> [!NOTE]
+> By default, Porter listens on port 443. Hytale's default server port is 5520. You can either configure Porter to listen on 5520 or map the host port 5520 to Porter's 443 (e.g., -p 5520:443/udp or via a Kubernetes Service).
 
 ## Agones Strategy
 
