@@ -1,43 +1,41 @@
 # Porter
 
-Porter is a high-performance, transparent UDP relay designed specifically for QUIC traffic. It enables SNI-based routing for UDP-based protocols, allowing you to host multiple QUIC-powered services behind a single entry point.
+Porter is a high-performance, transparent UDP relay for QUIC traffic. It enables SNI-based routing for UDP protocols, allowing multiple QUIC services behind a single entry point.
 
 ## Overview
 
-Unlike traditional TCP proxies, routing UDP traffic while maintaining session stickiness is challenging. Porter solves this by deeply inspecting QUIC packets to extract the Server Name Indication (SNI) during the handshake and subsequently tracking Destination Connection IDs (DCID) to ensure packets are routed to the correct backend even during client network migrations.
+Routing UDP traffic while maintaining session stickiness is challenging. Porter inspects QUIC packets to extract the Server Name Indication (SNI) during the handshake and tracks Destination Connection IDs (DCID) to ensure packets reach the correct backend, even during client network migrations.
 
 ### Key Features
 
-- QUIC-Aware Routing: Parses QUIC Initial packets to route traffic based on the requested SNI.
-- Session Stickiness: Tracks QUIC Connection IDs to maintain session integrity throughout the connection lifecycle.
-- Connection Migration Support: Seamlessly handles client IP/port changes by following the DCID.
-- Dynamic Routing Strategies: Support for both Simple (static mapping) and [Agones](https://agones.dev/) (game server fleets) strategies.
+- QUIC-Aware Routing: Parses QUIC Initial packets to route traffic based on SNI.
+- Session Stickiness: Tracks QUIC Connection IDs to maintain session integrity.
+- Connection Migration Support: Handles client IP/port changes by following the DCID.
+- Dynamic Routing Strategies: Supports Simple (static) and [Agones](https://github.com/googleforgames/agones) (game server fleets) strategies.
 - Management API: RESTful API to update routing tables in real-time.
-- Horizontal Scalability: Optional Redis integration for route persistence and cross-instance synchronization via Pub/Sub.
+- Horizontal Scalability: Optional [Redis](https://github.com/redis/redis) integration for route persistence and sync.
 
 ## How it works (for BungeeCord/Velocity users)
 
-If you're coming from the Minecraft world (BungeeCord, Waterfall, or Velocity), you can think of Porter as a Layer 4 "Proxy" for QUIC. 
+Think of Porter as a Layer 4 Proxy for QUIC, similar to how Velocity works for TCP Minecraft traffic.
 
-In BungeeCord, the proxy reads the Minecraft handshake to find the `serverAddress` (SNI equivalent) and forwards the TCP stream. Porter does something very similar but for UDP-based QUIC traffic:
-
-1. SNI Extraction: Just like Velocity reads the hostname from the handshake, Porter inspects the QUIC `Initial` packet to find the Server Name Indication (SNI).
-2. Dynamic Routing: Instead of a static `config.yml` with a fixed list of servers, Porter can use the Agones Strategy to "ask" Kubernetes for an available game server instance on the fly.
-3. Session Persistence: Unlike standard UDP load balancers that might send packets to the wrong server if a player's IP changes (e.g., switching from Wi-Fi to 5G), Porter tracks the Connection ID (DCID). This is like "sticky sessions" on steroids—even if the player's IP changes, they stay connected to the same backend.
+1. SNI Extraction: Porter inspects the QUIC Initial packet to find the SNI.
+2. Dynamic Routing: Porter can query Kubernetes for an available game server via [Agones](https://github.com/googleforgames/agones).
+3. Session Persistence: Porter tracks the Connection ID (DCID) to maintain connections even if the client IP changes.
 
 ## Architecture
 
-1. QUIC Packet Parsing: Porter performs minimal decryption and parsing of QUIC Initial packets to find the TLS SNI.
-2. Strategy Management: Once the SNI is known, Porter queries a routing strategy (Simple or [Agones](https://agones.dev/)) to find the destination backend.
-3. Session Mapping: A mapping between the QUIC DCID and the backend is stored.
-4. Transparent Forwarding: Subsequent packets (including Short Header packets) are forwarded to the backend based on their DCID, bypassing the need for SNI re-extraction.
+1. QUIC Packet Parsing: Minimal decryption and parsing of QUIC Initial packets to find TLS SNI.
+2. Strategy Management: Queries a routing strategy to find the destination backend.
+3. Session Mapping: Maps QUIC DCID to the backend.
+4. Transparent Forwarding: Forwards subsequent packets based on DCID without re-extraction.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Go 1.25.5 or later
-- Redis (optional, for multi-instance sync)
+- [Redis](https://github.com/redis/redis) (optional)
 
 ### Installation
 
@@ -56,7 +54,7 @@ docker run -p 443:443/udp -p 8080:8080 porter
 
 ## Configuration
 
-Porter is configured via a `config.yaml` file.
+Configure Porter via `config.yaml`.
 
 ```yaml
 udp:
@@ -76,15 +74,15 @@ routes:
     target: "10.0.0.5:7777"
 ```
 
+Note: By default, Porter listens on port 443. Hytale's default server port is 5520. You can either configure Porter to listen on 5520 or map the host port 5520 to Porter's 443 (e.g., -p 5520:443/udp or via a Kubernetes Service).
+
 ## Agones Strategy
 
-The [Agones](https://agones.dev/) strategy allows Porter to dynamically discover and allocate game servers from Agones fleets. 
-
-When a request is received for an SNI mapped to an Agones fleet, Porter uses the Agones Allocation API to find an available game server.
+The [Agones](https://github.com/googleforgames/agones) strategy allows Porter to dynamically discover and allocate game servers from Agones fleets.
 
 ### Configuration
 
-To enable Agones support, configure the `agones` section in your `config.yaml`:
+Enable [Agones](https://github.com/googleforgames/agones) support in `config.yaml`:
 
 ```yaml
 agones:
@@ -98,20 +96,18 @@ agones:
 routes:
   - fqdn: "game.example.com"
     type: "agones"
-    target: "my-fleet-name" # The fleet name to allocate from
+    target: "my-fleet-name"
 ```
 
 ### Fleet Requirements
 
-To work with Porter's Agones strategy, your fleets must be configured with a `players` list. Porter specifically looks for servers with room for an additional player by including a `ListSelector` in the allocation request:
+Fleets must be configured with a players list. Porter looks for servers with room for an additional player.
 
 ```yaml
 lists:
   players:
     minAvailable: 1
 ```
-
-This ensures that Porter routes players to servers that have capacity, rather than just any `READY` or `ALLOCATED` server.
 
 ## Management API
 
@@ -129,12 +125,30 @@ Porter provides a Fiber-based API for dynamic route management.
 }
 ```
 
-### Agones Allocation (Experimental)
+### Agones Allocation
 
 `POST /allocate`
 
-Triggers a backend allocation for an [Agones](https://agones.dev/) fleet and returns the routing information.
+Triggers a backend allocation for an [Agones](https://github.com/googleforgames/agones) fleet, creates a temporary routing mapping, and returns the assigned FQDN. This allows servers to connect users to a specific game server instance via its own FQDN.
+
+**Request:**
+
+```json
+{
+  "fleet": "lobby",
+  "domain": "example.com"
+}
+```
+
+**Response:**
+
+```json
+{
+  "fqdn": "lobby-xxxx-xxxx.example.com",
+  "name": "lobby-xxxx-xxxx"
+}
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

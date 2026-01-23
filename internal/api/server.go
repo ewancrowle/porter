@@ -81,20 +81,44 @@ func (s *Server) handleAgonesAllocation(c *fiber.Ctx) error {
 	}
 
 	type allocationRequest struct {
-		FQDN string `json:"fqdn"`
+		Fleet  string `json:"fleet"`
+		Domain string `json:"domain"`
 	}
 	var req allocationRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
 
-	target, err := s.agones.Resolve(c.Context(), req.FQDN)
+	if req.Fleet == "" || req.Domain == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Fleet and Domain are required"})
+	}
+
+	target, gsName, err := s.agones.Allocate(c.Context(), req.Fleet)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// Create an FQDN for the game server
+	fqdn := fmt.Sprintf("%s.%s", gsName, req.Domain)
+
+	// Update simple strategy with the new route
+	s.simple.UpdateRoute(fqdn, target)
+
+	// Publish to Redis for sync if enabled
+	if s.sync != nil {
+		route := strategy.Route{
+			FQDN:   fqdn,
+			Type:   strategy.StrategySimple,
+			Target: target,
+		}
+		if err := s.sync.PublishUpdate(c.Context(), route); err != nil {
+			// Log error but continue as the local route is already updated
+			fmt.Printf("Failed to sync allocated route to Redis: %v\n", err)
+		}
+	}
+
 	return c.JSON(fiber.Map{
-		"fqdn":   req.FQDN,
-		"target": target,
+		"fqdn": fqdn,
+		"name": gsName,
 	})
 }

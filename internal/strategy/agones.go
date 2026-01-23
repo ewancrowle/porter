@@ -117,7 +117,8 @@ func (s *AgonesStrategy) Resolve(ctx context.Context, fqdn string) (string, erro
 		return "", errors.New("agones strategy is not enabled or initialized")
 	}
 
-	return s.allocate(ctx, fleetName)
+	target, _, err := s.Allocate(ctx, fleetName)
+	return target, err
 }
 
 func (s *AgonesStrategy) UpdateRoute(fqdn, fleetName string) {
@@ -126,13 +127,13 @@ func (s *AgonesStrategy) UpdateRoute(fqdn, fleetName string) {
 	s.fleets[fqdn] = fleetName
 }
 
-func (s *AgonesStrategy) allocate(ctx context.Context, fleetName string) (string, error) {
+func (s *AgonesStrategy) Allocate(ctx context.Context, fleetName string) (string, string, error) {
 	s.mu.RLock()
 	client := s.client
 	s.mu.RUnlock()
 
 	if client == nil {
-		return "", errors.New("agones client not initialized")
+		return "", "", errors.New("agones client not initialized")
 	}
 
 	request := &pb.AllocationRequest{
@@ -167,12 +168,11 @@ func (s *AgonesStrategy) allocate(ctx context.Context, fleetName string) (string
 	resp, err := client.Allocate(ctx, request)
 	if err != nil {
 		log.Printf("Agones allocation failed for fleet %s: %v", fleetName, err)
-		return "", fmt.Errorf("agones allocation failed: %w", err)
+		return "", "", fmt.Errorf("agones allocation failed: %w", err)
 	}
 
 	target := fmt.Sprintf("%s:%d", resp.Address, resp.Ports[0].Port)
-	log.Printf("Agones allocation successful: %s -> %s", fleetName, target)
+	log.Printf("Agones allocation successful: %s -> %s (GameServer: %s)", fleetName, target, resp.GameServerName)
 
-	// Assuming we want to return "ip:port"
-	return target, nil
+	return target, resp.GameServerName, nil
 }
