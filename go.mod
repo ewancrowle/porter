@@ -5,7 +5,6 @@ go 1.25.5
 require (
 	agones.dev/agones v1.55.0
 	github.com/gofiber/fiber/v2 v2.52.10
-	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.47.0

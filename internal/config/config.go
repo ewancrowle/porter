@@ -26,7 +26,6 @@ type Config struct {
 		AllocatorHost       string `mapstructure:"allocator_host"`
 		AllocatorClientCert string `mapstructure:"allocator_client_cert"`
 		AllocatorClientKey  string `mapstructure:"allocator_client_key"`
-		AllocatorCACert     string `mapstructure:"allocator_ca_cert"`
 	} `mapstructure:"agones"`
 	Routes []struct {
 		FQDN   string `mapstructure:"fqdn"`

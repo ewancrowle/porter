@@ -92,7 +92,6 @@ agones:
   allocator_host: "agones-allocator.agones-system.svc.cluster.local:443"
   allocator_client_cert: "/path/to/tls.crt"
   allocator_client_key: "/path/to/tls.key"
-  allocator_ca_cert: "/path/to/ca.crt"
 
 routes:
   - fqdn: "game.example.com"

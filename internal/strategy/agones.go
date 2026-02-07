@@ -3,7 +3,6 @@ package strategy
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -11,7 +10,6 @@ import (
 	"sync"
 
 	pb "agones.dev/agones/pkg/allocation/go"
-	pkgerrors "github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -25,7 +23,6 @@ type AgonesStrategy struct {
 	host      string
 	cert      string
 	key       string
-	ca        string
 
 	client pb.AllocationServiceClient
 	conn   *grpc.ClientConn
@@ -37,7 +34,7 @@ func NewAgonesStrategy() *AgonesStrategy {
 	}
 }
 
-func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key, ca string) error {
+func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -46,7 +43,6 @@ func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key, ca string) err
 	s.host = host
 	s.cert = cert
 	s.key = key
-	s.ca = ca
 
 	if !s.enabled {
 		return nil
@@ -64,12 +60,8 @@ func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key, ca string) err
 	if err != nil {
 		return fmt.Errorf("failed to read key file: %w", err)
 	}
-	caBytes, err := os.ReadFile(s.ca)
-	if err != nil {
-		return fmt.Errorf("failed to read CA cert file: %w", err)
-	}
 
-	dialOpts, err := s.createRemoteClusterDialOption(certBytes, keyBytes, caBytes)
+	dialOpts, err := s.createRemoteClusterDialOption(certBytes, keyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to create dial options: %w", err)
 	}
@@ -85,19 +77,13 @@ func (s *AgonesStrategy) Setup(enabled bool, ns, host, cert, key, ca string) err
 	return nil
 }
 
-func (s *AgonesStrategy) createRemoteClusterDialOption(clientCert, clientKey, caCert []byte) (grpc.DialOption, error) {
+func (s *AgonesStrategy) createRemoteClusterDialOption(clientCert, clientKey []byte) (grpc.DialOption, error) {
 	cert, err := tls.X509KeyPair(clientCert, clientKey)
 	if err != nil {
 		return nil, err
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS12, InsecureSkipVerify: true}
-	if len(caCert) != 0 {
-		tlsConfig.RootCAs = x509.NewCertPool()
-		if !tlsConfig.RootCAs.AppendCertsFromPEM(caCert) {
-			return nil, pkgerrors.New("only PEM format is accepted for server CA")
-		}
-	}
 
 	return grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)), nil
 }

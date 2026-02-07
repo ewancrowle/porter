@@ -29,7 +29,7 @@ func main() {
 
 	agones := strategy.NewAgonesStrategy()
 	if cfg.Agones.Enabled {
-		if err := agones.Setup(cfg.Agones.Enabled, cfg.Agones.Namespace, cfg.Agones.AllocatorHost, cfg.Agones.AllocatorClientCert, cfg.Agones.AllocatorClientKey, cfg.Agones.AllocatorCACert); err != nil {
+		if err := agones.Setup(cfg.Agones.Enabled, cfg.Agones.Namespace, cfg.Agones.AllocatorHost, cfg.Agones.AllocatorClientCert, cfg.Agones.AllocatorClientKey); err != nil {
 			log.Fatalf("Failed to setup Agones strategy: %v", err)
 		}
 		manager.Register(strategy.StrategyAgones, agones)

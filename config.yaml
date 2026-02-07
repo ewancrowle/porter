@@ -37,7 +37,6 @@ agones:
   # Paths to TLS certificates for authenticating with the Agones Allocator.
   allocator_client_cert: "/etc/agones/certs/tls.crt"
   allocator_client_key: "/etc/agones/certs/tls.key"
-  allocator_ca_cert: "/etc/agones/certs/ca.crt"
 
 # Initial routes to seed the Porter instance.
 # These routes are loaded on startup and are NOT persisted to Redis.
